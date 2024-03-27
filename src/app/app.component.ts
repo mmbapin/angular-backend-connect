@@ -2,6 +2,7 @@ import { Component, OnInit } from "@angular/core";
 import { HttpClient } from "@angular/common/http";
 import { map, retry } from "rxjs/operators";
 import { Post } from "./post.model";
+import { PostsService } from "./post.service";
 
 @Component({
   selector: "app-root",
@@ -10,54 +11,40 @@ import { Post } from "./post.model";
 })
 export class AppComponent implements OnInit {
   loadedPosts: Post[] = [];
+  isLoading: boolean = false;
 
-  constructor(private http: HttpClient) {}
+  constructor(private http: HttpClient, private postService: PostsService) {}
 
   ngOnInit() {
-    this.fetchPosts();
+    this.fetchPosts()
   }
 
   onCreatePost(postData: { title: string; content: string }) {
     // Send Http request
-    console.log(postData);
-    this.http
-      .post<{ name: string }>(
-        "https://ng-complete-guide-ed6c4-default-rtdb.firebaseio.com/posts.json",
-        postData
-      )
-      .subscribe((responseData) => {
-        console.log(responseData);
-      });
+    this.postService.createAndStorePost(postData.title, postData.content).subscribe((response) => {
+      if(response){
+        this.fetchPosts()
+      }
+    });
   }
 
   onFetchPosts() {
     // Send Http request
-    this.fetchPosts();
+    this.fetchPosts()
   }
 
   onClearPosts() {
     // Send Http request
+    this.postService.deletePosts().subscribe(() => {
+      this.loadedPosts = []
+    })
   }
 
   private fetchPosts() {
-    this.http
-      .get<{ [key: string]: Post }>(
-        "https://ng-complete-guide-ed6c4-default-rtdb.firebaseio.com/posts.json"
-      )
-      .pipe(
-        map((responseData) => {
-          const postArray: Post[] = [];
-          for (const key in responseData) {
-            if (responseData.hasOwnProperty(key)) {
-              postArray.push({ ...responseData[key], id: key });
-            }
-          }
-          return postArray;
-        })
-      )
-      .subscribe((posts) => {
-        console.log(posts);
-        this.loadedPosts = posts;
-      });
+   this.isLoading = true;
+   this.postService.fetchPosts().subscribe((posts) => {
+    this.isLoading = false;
+    this.loadedPosts = posts;
+   })
   }
 }
